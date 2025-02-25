@@ -1,6 +1,6 @@
 {
   "name": "@elrond25/image-processor",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -8,7 +8,7 @@
   "keywords": [],
   "author": "Carlos Araya <carlos.araya@gmail.com> (https://publishing-project.rivendellweb.net/)",
   "license": "MIT",
-  "description": "This is meant as a replacement for the Squoosh CLI application that is no longer available due to staffing changes at Google.",
+  "description": "This is meant as a replacement for the Squoosh CLI application that is no longer available.",
   "dependencies": {
     "@jsquash/avif": "^2.0.0",
     "@jsquash/jpeg": "^1.4.0",
