@@ -1,6 +1,6 @@
 # README
 
-This is meant as a replacement for the Squoosh CLI application that is no longer available due to staffing changes at Google.
+This is meant as a replacement for the Squoosh CLI application that is no longer available.
 
 This app will:
 
