@@ -3,16 +3,25 @@
   "version": "1.0.3",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "test": "playwright test",
+    "start": "node --import tsx src/index.ts",
+    "build": "tsc src/index.ts --outDir dist",
     "watch": "tsc --watch",
+    "test": "playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "keywords": [],
+  "keywords": [
+    "image",
+    "processor",
+    "sharp",
+    "cjxl",
+    "converter",
+    "cli",
+    "typescript"
+  ],
   "author": "Carlos Araya <carlos.araya@gmail.com> (https://publishing-project.rivendellweb.net/)",
   "license": "MIT",
-  "description": "This is meant as a replacement for the Squoosh CLI application that is no longer available.",
+  "description": "Convert images to different formats using sharp and cjxl",
   "dependencies": {
     "commander": "^13.1.0",
     "sharp": "^0.34.1"
@@ -25,6 +34,7 @@
     "eslint": "^9.21.0",
     "fs-extra": "^11.3.0",
     "globals": "^16.0.0",
+    "tsx": "^4.19.3",
     "typescript": "^5.8.3"
   },
   "repository": {

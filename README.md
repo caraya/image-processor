@@ -1,13 +1,58 @@
-# README
+# 🖼️ Image Converter CLI
 
-This is meant as a replacement for the Squoosh CLI application that is no longer available.
+A powerful and flexible CLI tool to convert image files or directories of images into various formats using [Sharp](https://github.com/lovell/sharp) and [cjxl](https://github.com/libjxl/libjxl) for JPEG XL support.
 
-This app will:
+## ✨ Features
 
-* Use Node.js built-in modules: fs, path, process, and fs/promises
-* Accept user input via command-line arguments
-* Support the following CLI options:
-  * Convert a single file to all available formats
-  * Convert a single file to a specified format
-  * Convert all files in a directory to all formats
-  * Convert all files in a directory to a specified format
+* Convert single images or entire directories
+* Supports output formats: `jpg`, `png`, `webp`, `avif`, `jpegxl`
+* Optional verbose logging
+* Handles overwriting with prompts (`yes`, `no`, `all`, `quit`)
+* Supports output to custom directory
+* Fallback to `cjxl` for JPEG XL conversion
+* Interactive CLI prompts for safer operations
+
+---
+
+## 📦 Installation
+
+Clone this repo and install dependencies:
+
+```bash
+npm install
+```
+
+Make sure you have cjxl installed and available in your system path for JPEG XL support.
+
+## Install cjxl
+
+### macOS (with Homebrew):
+
+```bash
+brew install jpeg-xl
+```
+
+### Ubuntu/Debian:
+
+```bash
+sudo apt install libjxl-tools
+```
+
+## 🧪 Usage
+
+```bash
+npx tsx src/index.ts <source> --formats <formats...> [options]
+```
+
+## 🔤 Arguments
+
+* `<source>`: A path to an image file or directory
+
+## ⚙️ Options
+
+| Flag | Description |
+| --- | --- |
+| -f, --formats | Output format(s). Use multiple (e.g. jpg png) or "all" for all supported |
+| -o, --out | Output directory. Defaults to same directory as source |
+| --verbose | Enable detailed logging |
+| -h, --help | Show usage information |
