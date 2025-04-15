@@ -1,0 +1,38 @@
+{
+  "name": "@elrond25/image-processor",
+  "version": "1.0.3",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "playwright test",
+    "watch": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "keywords": [],
+  "author": "Carlos Araya <carlos.araya@gmail.com> (https://publishing-project.rivendellweb.net/)",
+  "license": "MIT",
+  "description": "This is meant as a replacement for the Squoosh CLI application that is no longer available.",
+  "dependencies": {
+    "commander": "^13.1.0",
+    "sharp": "^0.34.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@playwright/test": "^1.51.1",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.14.1",
+    "eslint": "^9.21.0",
+    "fs-extra": "^11.3.0",
+    "globals": "^16.0.0",
+    "typescript": "^5.8.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/caraya/image-processor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/caraya/image-processor/issues"
+  },
+  "homepage": "https://github.com/caraya/image-processor#readme"
+}
