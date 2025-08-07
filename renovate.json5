@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  // What default configuration we're extending
+  "extends": [
+    "config:recommended"
+  ],
+  // Set it to automerge all PRs
+  "automerge": true,
+  // How many concurrent PRs to run
+  "prConcurrentLimit": 5,
+  // When to run the generated PRs
+  "schedule": ["at any time"],
+  // What labels to use
+  "labels": ["dependencies", "renovate"]
+}
