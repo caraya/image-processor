@@ -1,10 +1,10 @@
 {
   "name": "@elrond25/image-processor",
   "version": "1.0.3",
-  "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node --import tsx src/index.ts",
-    "build": "tsc src/index.ts --outDir dist",
+    "build": "tsc",
     "watch": "tsc --watch",
     "test": "playwright test",
     "lint": "eslint .",
@@ -22,6 +22,14 @@
   "author": "Carlos Araya <carlos.araya@gmail.com> (https://publishing-project.rivendellweb.net/)",
   "license": "MIT",
   "description": "Convert images to different formats using sharp and cjxl",
+  "bin": {
+    "image-processor": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "overrides": {
+    "@eslint/plugin-kit": "0.3.5",
+    "brace-expansion": "4.0.1"
+  },
   "dependencies": {
     "commander": "^14.0.0",
     "sharp": "^0.34.1"

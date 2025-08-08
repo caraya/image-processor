@@ -99,26 +99,42 @@ test('converts image to jpegxl using cjxl', async () => {
 
 // Test: Simulate missing cjxl and confirm warning is shown
 // Temporarily renames cjxl binary
+// In image-processor/tests/image_converter_cli.spec.ts
+
 test('shows warning if cjxl is missing', async () => {
-  let cjxlPath = ''
+  let cjxlPath = '';
   try {
-    cjxlPath = execSync('which cjxl').toString().trim()
+    // Find the path to the cjxl executable
+    cjxlPath = execSync('which cjxl').toString().trim();
   } catch {
-    test.skip(true, 'cjxl is not installed at all. Cannot simulate removal.')
-    return
+    // If cjxl isn't installed, we can't run this test, so we skip it.
+    test.skip(true, 'cjxl is not installed at all. Cannot simulate removal.');
+    return;
   }
+
   try {
-    fs.renameSync(cjxlPath, `${cjxlPath}.bak`)
-    const output = execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats jpegxl --out ${OUTPUT_DIR}`, {
-      encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe']
-    })
-    expect(output.toString()).toMatch(/cjxl is not installed/)
+    // Temporarily rename the cjxl executable to simulate it being missing
+    fs.renameSync(cjxlPath, `${cjxlPath}.bak`);
+
+    // This command is expected to fail, so we wrap it in a try block
+    // and let the catch block handle the expected error.
+    execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats jpegxl --out ${OUTPUT_DIR}`, {
+      stdio: 'pipe' // Capture stdio streams
+    });
+
+  } catch (error: any) {
+    // The command *should* throw an error. Now, we check if the stderr
+    // from that error contains the warning message we expect.
+    expect(error.stderr.toString()).toMatch(/cjxl is not installed/);
+
   } finally {
+    // IMPORTANT: This block ensures that we rename the executable back
+    // to its original name, even if the test fails, preventing side effects.
     if (fs.existsSync(`${cjxlPath}.bak`)) {
-      fs.renameSync(`${cjxlPath}.bak`, cjxlPath)
+      fs.renameSync(`${cjxlPath}.bak`, cjxlPath);
     }
   }
-})
+});
 
 // Test: Handle overwrite prompt with "no" input
 // Ensures file is not overwritten

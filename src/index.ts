@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
+// Node built-in modules
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { execSync, spawn } from 'node:child_process'
+// Third-party modules
+import * as readline from 'readline'
 import { Command } from 'commander'
-import fs from 'fs'
-import path from 'path'
-import readline from 'readline'
-import sharp from 'sharp'
-import { execSync, spawn } from 'child_process'
+import sharp = require('sharp')
 
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif']
