@@ -1,8 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { execSync, spawn } from 'child_process'
-import fs from 'fs'
-import path from 'path'
-import crypto from 'crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import { fileURLToPath } from 'node:url';
+
+// emulate __dirname in ES module
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Path to the CLI entry file
 const CLI_PATH = path.resolve(__dirname, '../src/index.ts')

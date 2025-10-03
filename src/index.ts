@@ -7,7 +7,7 @@ import { execSync, spawn } from 'node:child_process'
 // Third-party modules
 import * as readline from 'readline'
 import { Command } from 'commander'
-import sharp = require('sharp')
+import sharp from 'sharp'
 
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif']
