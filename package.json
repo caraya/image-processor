@@ -1,6 +1,6 @@
 {
   "name": "@elrond25/image-processor",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "scripts": {
     "start": "node --import tsx src/index.ts",
