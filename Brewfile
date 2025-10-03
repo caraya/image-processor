@@ -1,0 +1,1 @@
+brew "jpeg-xl"

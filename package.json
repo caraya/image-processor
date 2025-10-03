@@ -23,6 +23,7 @@
   "license": "MIT",
   "description": "Convert images to different formats using sharp and cjxl",
   "bin": {
+    "imageproc": "dist/index.js",
     "image-processor": "dist/index.js"
   },
   "main": "dist/index.js",
