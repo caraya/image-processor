@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp'
 
 // emulate __dirname in ES module
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -175,3 +176,52 @@ test('prompts on overwrite and respects "no" answer', async () => {
 //   const hashAfter = fileHash(filePath)
 //   expect(hashAfter).not.toBe(hashBefore) // File should be modified
 // })
+
+// Test: Resize image with specified width and height
+test('resizes image with given width and height', async () => {
+  const width = 100
+  const height = 80
+  execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --width ${width} --height ${height}`, {
+    encoding: 'utf-8',
+  })
+  const outputFile = path.join(OUTPUT_DIR, 'test.png')
+  expect(fs.existsSync(outputFile)).toBeTruthy()
+
+  const metadata = await sharp(outputFile).metadata()
+  expect(metadata.width).toBe(width)
+  expect(metadata.height).toBe(height)
+})
+
+// Test: Resize image with specified width, maintaining aspect ratio
+test('resizes image with given width and maintains aspect ratio', async () => {
+  const width = 150
+  execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --width ${width}`, {
+    encoding: 'utf-8',
+  })
+  const outputFile = path.join(OUTPUT_DIR, 'test.png')
+  expect(fs.existsSync(outputFile)).toBeTruthy()
+
+  const metadata = await sharp(outputFile).metadata()
+  const originalMetadata = await sharp(IMAGE_PATH).metadata()
+  const expectedHeight = Math.round((originalMetadata.height! / originalMetadata.width!) * width)
+
+  expect(metadata.width).toBe(width)
+  expect(metadata.height).toBe(expectedHeight)
+})
+
+// Test: Resize image with specified height, maintaining aspect ratio
+test('resizes image with given height and maintains aspect ratio', async () => {
+    const height = 120
+    execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --height ${height}`, {
+        encoding: 'utf-8',
+    })
+    const outputFile = path.join(OUTPUT_DIR, 'test.png')
+    expect(fs.existsSync(outputFile)).toBeTruthy()
+
+    const metadata = await sharp(outputFile).metadata()
+    const originalMetadata = await sharp(IMAGE_PATH).metadata()
+    const expectedWidth = Math.round((originalMetadata.width! / originalMetadata.height!) * height)
+
+    expect(metadata.height).toBe(height)
+    expect(metadata.width).toBe(expectedWidth)
+})

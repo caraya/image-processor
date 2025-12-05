@@ -49,9 +49,14 @@ async function promptOverwrite(filePath: string): Promise<'yes' | 'no' | 'all' |
 async function convertImage(
   filePath: string,
   formats: string[],
-  outputDir?: string,
-  verbose = false
+  options: {
+    outputDir?: string
+    verbose?: boolean
+    width?: number
+    height?: number
+  }
 ): Promise<void> {
+  const { outputDir, verbose, width, height } = options
   const ext = path.extname(filePath)
   const baseName = path.basename(filePath, ext)
   const inputDir = path.dirname(filePath)
@@ -83,7 +88,11 @@ async function convertImage(
 
       try {
         // Convert original file to intermediate PNG
-        await sharp(filePath).toFormat('png').toFile(intermediatePng)
+        const sharpInstance = sharp(filePath)
+        if (width || height) {
+          sharpInstance.resize(width, height)
+        }
+        await sharpInstance.toFormat('png').toFile(intermediatePng)
         if (verbose) console.log(`📦 Running: cjxl ${intermediatePng} ${finalJxl}`)
 
         // Spawn cjxl subprocess to convert PNG to JXL
@@ -125,7 +134,11 @@ async function convertImage(
     }
 
     try {
-      await sharp(filePath).toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
+      const sharpInstance = sharp(filePath)
+      if (width || height) {
+        sharpInstance.resize(width, height)
+      }
+      await sharpInstance.toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
       console.log(`✅ Converted: ${filePath} -> ${outputPath}`)
     } catch (err: any) {
       console.error(`❌ Failed to convert to ${format}: ${err.message}`)
@@ -137,13 +150,17 @@ async function convertImage(
 async function convertDirectory(
   dirPath: string,
   formats: string[],
-  outputDir?: string,
-  verbose = false
+  options: {
+    outputDir?: string
+    verbose?: boolean
+    width?: number
+    height?: number
+  }
 ) {
   const entries = await fs.promises.readdir(dirPath)
   const imageFiles = entries.filter(f => ['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(path.extname(f).toLowerCase()))
   for (const file of imageFiles) {
-    await convertImage(path.join(dirPath, file), formats, outputDir, verbose)
+    await convertImage(path.join(dirPath, file), formats, options)
   }
 }
 
@@ -159,7 +176,15 @@ program
   .option('-f, --formats <formats...>', 'Target formats (jpg, png, webp, avif, jpegxl, or all)', [])
   .option('-o, --out <dir>', 'Output directory (default: same as source)')
   .option('--verbose', 'Enable detailed logging', false)
-  .action(async (source: string, options: { formats: string[], out?: string, verbose?: boolean }) => {
+  .option('-w, --width <number>', 'Resize to width (pixels)')
+  .option('-h, --height <number>', 'Resize to height (pixels)')
+  .action(async (source: string, options: {
+    formats: string[]
+    out?: string
+    verbose?: boolean
+    width?: string
+    height?: string
+  }) => {
     checkCjxlAvailability() // Warn if cjxl isn't available
 
     let formats: string[] = []
@@ -177,13 +202,26 @@ program
       formats = options.formats
     }
 
+    const width = options.width ? parseInt(options.width, 10) : undefined
+    const height = options.height ? parseInt(options.height, 10) : undefined
+
     try {
       const stat = await fs.promises.stat(source)
       // Process single file or entire directory
       if (stat.isFile()) {
-        await convertImage(source, formats, options.out, options.verbose)
+        await convertImage(source, formats, {
+          outputDir: options.out,
+          verbose: options.verbose,
+          width,
+          height,
+        })
       } else if (stat.isDirectory()) {
-        await convertDirectory(source, formats, options.out, options.verbose)
+        await convertDirectory(source, formats, {
+          outputDir: options.out,
+          verbose: options.verbose,
+          width,
+          height,
+        })
       } else {
         console.error('❌ Source must be a file or directory.')
         process.exit(1)
