@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import { createRequire as _createRequire } from "module";
-const __require = _createRequire(import.meta.url);
 // Node built-in modules
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -8,7 +6,7 @@ import { execSync, spawn } from 'node:child_process';
 // Third-party modules
 import * as readline from 'readline';
 import { Command } from 'commander';
-const sharp = __require("sharp");
+import sharp from 'sharp';
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif'];
 // All supported formats including jpegxl via cjxl fallback
@@ -46,7 +44,8 @@ async function promptOverwrite(filePath) {
     });
 }
 // Convert a single image file to multiple formats
-async function convertImage(filePath, formats, outputDir, verbose = false) {
+async function convertImage(filePath, formats, options) {
+    const { outputDir, verbose, width, height } = options;
     const ext = path.extname(filePath);
     const baseName = path.basename(filePath, ext);
     const inputDir = path.dirname(filePath);
@@ -76,7 +75,11 @@ async function convertImage(filePath, formats, outputDir, verbose = false) {
             }
             try {
                 // Convert original file to intermediate PNG
-                await sharp(filePath).toFormat('png').toFile(intermediatePng);
+                const sharpInstance = sharp(filePath);
+                if (width || height) {
+                    sharpInstance.resize(width, height);
+                }
+                await sharpInstance.toFormat('png').toFile(intermediatePng);
                 if (verbose)
                     console.log(`📦 Running: cjxl ${intermediatePng} ${finalJxl}`);
                 // Spawn cjxl subprocess to convert PNG to JXL
@@ -119,7 +122,11 @@ async function convertImage(filePath, formats, outputDir, verbose = false) {
                 overwriteAll = true;
         }
         try {
-            await sharp(filePath).toFormat(format).toFile(outputPath);
+            const sharpInstance = sharp(filePath);
+            if (width || height) {
+                sharpInstance.resize(width, height);
+            }
+            await sharpInstance.toFormat(format).toFile(outputPath);
             console.log(`✅ Converted: ${filePath} -> ${outputPath}`);
         }
         catch (err) {
@@ -128,11 +135,11 @@ async function convertImage(filePath, formats, outputDir, verbose = false) {
     }
 }
 // Convert all image files within a directory
-async function convertDirectory(dirPath, formats, outputDir, verbose = false) {
+async function convertDirectory(dirPath, formats, options) {
     const entries = await fs.promises.readdir(dirPath);
     const imageFiles = entries.filter(f => ['.jpg', '.jpeg', '.png', '.webp', '.avif'].includes(path.extname(f).toLowerCase()));
     for (const file of imageFiles) {
-        await convertImage(path.join(dirPath, file), formats, outputDir, verbose);
+        await convertImage(path.join(dirPath, file), formats, options);
     }
 }
 const program = new Command();
@@ -145,6 +152,8 @@ program
     .option('-f, --formats <formats...>', 'Target formats (jpg, png, webp, avif, jpegxl, or all)', [])
     .option('-o, --out <dir>', 'Output directory (default: same as source)')
     .option('--verbose', 'Enable detailed logging', false)
+    .option('-w, --width <number>', 'Resize to width (pixels)')
+    .option('-h, --height <number>', 'Resize to height (pixels)')
     .action(async (source, options) => {
     checkCjxlAvailability(); // Warn if cjxl isn't available
     let formats = [];
@@ -163,14 +172,26 @@ program
         }
         formats = options.formats;
     }
+    const width = options.width ? parseInt(options.width, 10) : undefined;
+    const height = options.height ? parseInt(options.height, 10) : undefined;
     try {
         const stat = await fs.promises.stat(source);
         // Process single file or entire directory
         if (stat.isFile()) {
-            await convertImage(source, formats, options.out, options.verbose);
+            await convertImage(source, formats, {
+                outputDir: options.out,
+                verbose: options.verbose,
+                width,
+                height,
+            });
         }
         else if (stat.isDirectory()) {
-            await convertDirectory(source, formats, options.out, options.verbose);
+            await convertDirectory(source, formats, {
+                outputDir: options.out,
+                verbose: options.verbose,
+                width,
+                height,
+            });
         }
         else {
             console.error('❌ Source must be a file or directory.');
