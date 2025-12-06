@@ -4,10 +4,14 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync, spawn } from 'node:child_process'
+import { createRequire } from 'node:module'
 // Third-party modules
 import * as readline from 'readline'
 import { Command } from 'commander'
 import sharp from 'sharp'
+
+const require = createRequire(import.meta.url)
+const pkg = require('../package.json')
 
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif']
@@ -22,7 +26,10 @@ const rl = readline.createInterface({
 
 let overwriteAll = false
 
-// Check if cjxl CLI is available on the system
+/**
+ * Checks if the `cjxl` command-line tool is available in the system's PATH.
+ * Logs a warning if it is not found.
+ */
 function checkCjxlAvailability() {
   try {
     execSync('cjxl --version', { stdio: 'ignore' })
@@ -31,7 +38,12 @@ function checkCjxlAvailability() {
   }
 }
 
-// Prompt user whether to overwrite an existing file
+/**
+ * Prompts the user to confirm overwriting an existing file.
+ *
+ * @param filePath - The path of the file that already exists.
+ * @returns A promise that resolves to the user's choice: 'yes', 'no', 'all', or 'quit'.
+ */
 async function promptOverwrite(filePath: string): Promise<'yes' | 'no' | 'all' | 'quit'> {
   return new Promise((resolve) => {
     rl.question(`⚠️  File already exists: ${filePath}\nOverwrite? [y]es / [n]o / [a]ll / [q]uit: `, (answer) => {
@@ -45,7 +57,17 @@ async function promptOverwrite(filePath: string): Promise<'yes' | 'no' | 'all' |
   })
 }
 
-// Convert a single image file to multiple formats
+/**
+ * Converts a single image file to the specified formats.
+ *
+ * @param filePath - The path to the source image file.
+ * @param formats - An array of target formats (e.g., ['jpg', 'webp']).
+ * @param options - Configuration options for the conversion.
+ * @param options.outputDir - Optional directory to save the converted images. Defaults to source directory.
+ * @param options.verbose - Whether to enable verbose logging.
+ * @param options.width - Optional width to resize the image to.
+ * @param options.height - Optional height to resize the image to.
+ */
 async function convertImage(
   filePath: string,
   formats: string[],
@@ -146,7 +168,17 @@ async function convertImage(
   }
 }
 
-// Convert all image files within a directory
+/**
+ * Converts all supported image files in a directory to the specified formats.
+ *
+ * @param dirPath - The path to the directory containing images.
+ * @param formats - An array of target formats.
+ * @param options - Configuration options for the conversion.
+ * @param options.outputDir - Optional directory to save the converted images.
+ * @param options.verbose - Whether to enable verbose logging.
+ * @param options.width - Optional width to resize the images to.
+ * @param options.height - Optional height to resize the images to.
+ */
 async function convertDirectory(
   dirPath: string,
   formats: string[],
@@ -169,7 +201,7 @@ const program = new Command()
 program
   .name('image-converter')
   .description('Convert images to different formats using sharp and cjxl')
-  .version('1.4.0')
+  .version(pkg.version)
 
 program
   .argument('<source>', 'Image file or directory path')
