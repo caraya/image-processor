@@ -76,9 +76,10 @@ async function convertImage(
     verbose?: boolean
     width?: number
     height?: number
+    withoutEnlargement?: boolean
   }
 ): Promise<void> {
-  const { outputDir, verbose, width, height } = options
+  const { outputDir, verbose, width, height, withoutEnlargement } = options
   const ext = path.extname(filePath)
   const baseName = path.basename(filePath, ext)
   const inputDir = path.dirname(filePath)
@@ -112,7 +113,7 @@ async function convertImage(
         // Convert original file to intermediate PNG
         const sharpInstance = sharp(filePath)
         if (width || height) {
-          sharpInstance.resize(width, height)
+          sharpInstance.resize({ width, height, withoutEnlargement })
         }
         await sharpInstance.toFormat('png').toFile(intermediatePng)
         if (verbose) console.log(`📦 Running: cjxl ${intermediatePng} ${finalJxl}`)
@@ -158,7 +159,7 @@ async function convertImage(
     try {
       const sharpInstance = sharp(filePath)
       if (width || height) {
-        sharpInstance.resize(width, height)
+        sharpInstance.resize({ width, height, withoutEnlargement })
       }
       await sharpInstance.toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
       console.log(`✅ Converted: ${filePath} -> ${outputPath}`)
@@ -187,6 +188,7 @@ async function convertDirectory(
     verbose?: boolean
     width?: number
     height?: number
+    withoutEnlargement?: boolean
   }
 ) {
   const entries = await fs.promises.readdir(dirPath)
@@ -210,12 +212,14 @@ program
   .option('--verbose', 'Enable detailed logging', false)
   .option('-w, --width <number>', 'Resize to width (pixels)')
   .option('-h, --height <number>', 'Resize to height (pixels)')
+  .option('--no-enlargement', 'Do not enlarge image if source is smaller')
   .action(async (source: string, options: {
     formats: string[]
     out?: string
     verbose?: boolean
     width?: string
     height?: string
+    enlargement: boolean
   }) => {
     checkCjxlAvailability() // Warn if cjxl isn't available
 
@@ -246,6 +250,7 @@ program
           verbose: options.verbose,
           width,
           height,
+          withoutEnlargement: !options.enlargement,
         })
       } else if (stat.isDirectory()) {
         await convertDirectory(source, formats, {
@@ -253,6 +258,7 @@ program
           verbose: options.verbose,
           width,
           height,
+          withoutEnlargement: !options.enlargement,
         })
       } else {
         console.error('❌ Source must be a file or directory.')
