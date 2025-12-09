@@ -58,6 +58,8 @@ npx tsx src/index.ts <source> [options]
 | `--formats <list>` | Output formats (e.g., `webp avif`). | Validated against a whitelist. `all` expands to all supported formats. |
 | `--width <px>` | Resize width. | If height is omitted, aspect ratio is preserved. |
 | `--height <px>` | Resize height. | If width is omitted, aspect ratio is preserved. |
+| `--no-enlargement` | Prevent upscaling. | Passed to Sharp's `resize` options. |
+| `--rotate <deg>` | Rotate image. | Auto-orients based on EXIF if omitted. |
 | `--verbose` | Detailed logging. | Toggles `stdio` inheritance for child processes (`cjxl`). |
 
 ## 🧪 Integration Testing Strategy
@@ -110,7 +112,13 @@ graph TD
     Detect -- File --> Process[Process Single File]
     Loop --> Process
 
-    Process --> Resize{Resize Args?}
+    Process --> Rotate{Rotate?}
+    Rotate -- Yes --> SharpRotate["Sharp .rotate(angle)"]
+    Rotate -- No --> SharpAutoOrient["Sharp .rotate() (Auto)"]
+
+    SharpRotate --> Resize{Resize Args?}
+    SharpAutoOrient --> Resize
+
     Resize -- Yes --> SharpResize["Sharp .resize()"]
     Resize -- No --> SharpLoad[Sharp Load]
 

@@ -26,13 +26,13 @@ Make sure you have cjxl installed and available in your system path for JPEG XL 
 
 ## Install cjxl
 
-### macOS (with Homebrew):
+### macOS (with Homebrew)
 
 ```bash
 brew install jpeg-xl
 ```
 
-### Ubuntu/Debian:
+### Ubuntu/Debian
 
 ```bash
 sudo apt install libjxl-tools
@@ -54,5 +54,9 @@ npx tsx src/index.ts <source> --formats <formats...> [options]
 | --- | --- |
 | -f, --formats | Output format(s). Use multiple (e.g. jpg png) or "all" for all supported |
 | -o, --out | Output directory. Defaults to same directory as source |
+| -w, --width | Resize to width (pixels) |
+| -h, --height | Resize to height (pixels) |
+| -r, --rotate | Rotate image by angle (degrees) |
+| --no-enlargement | Do not enlarge image if source is smaller than target dimensions |
 | --verbose | Enable detailed logging |
 | -h, --help | Show usage information |

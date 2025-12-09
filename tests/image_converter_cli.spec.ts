@@ -243,3 +243,62 @@ test.describe('Resizing', () => {
     expect(outputMetadata.width).toBe(originalMetadata.width)
   })
 })
+
+test.describe('Rotation', () => {
+  // Test: Auto-rotate image based on EXIF data
+  test('auto-rotates image based on EXIF orientation', async () => {
+    const inputPath = path.join(OUTPUT_DIR, 'input-rotated.jpg')
+    
+    // Create a 100x50 image with Orientation 6 (Rotated 90 CW)
+    // Visually, it should be 50x100.
+    await sharp({
+      create: {
+        width: 100,
+        height: 50,
+        channels: 3,
+        background: { r: 255, g: 0, b: 0 }
+      }
+    })
+    .withMetadata({ orientation: 6 })
+    .toFile(inputPath)
+
+    execSync(`npx tsx ${CLI_PATH} ${inputPath} --formats png --out ${OUTPUT_DIR}`, {
+      encoding: 'utf-8',
+    })
+    
+    const outputFile = path.join(OUTPUT_DIR, 'input-rotated.png')
+    const metadata = await sharp(outputFile).metadata()
+    
+    // Expect dimensions to be swapped because of rotation (100x50 -> 50x100)
+    expect(metadata.width).toBe(50)
+    expect(metadata.height).toBe(100)
+  })
+
+  // Test: Manual rotation
+  test('manually rotates image by specified angle', async () => {
+    const inputPath = path.join(OUTPUT_DIR, 'input-manual-rotate.jpg')
+    
+    // Create a 100x50 image (landscape)
+    await sharp({
+      create: {
+        width: 100,
+        height: 50,
+        channels: 3,
+        background: { r: 0, g: 255, b: 0 }
+      }
+    })
+    .toFile(inputPath)
+
+    // Rotate by 90 degrees
+    execSync(`npx tsx ${CLI_PATH} ${inputPath} --formats png --out ${OUTPUT_DIR} --rotate 90`, {
+      encoding: 'utf-8',
+    })
+    
+    const outputFile = path.join(OUTPUT_DIR, 'input-manual-rotate.png')
+    const metadata = await sharp(outputFile).metadata()
+    
+    // Expect dimensions to be swapped (100x50 -> 50x100)
+    expect(metadata.width).toBe(50)
+    expect(metadata.height).toBe(100)
+  })
+})

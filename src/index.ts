@@ -77,9 +77,10 @@ async function convertImage(
     width?: number
     height?: number
     withoutEnlargement?: boolean
+    rotate?: number
   }
 ): Promise<void> {
-  const { outputDir, verbose, width, height, withoutEnlargement } = options
+  const { outputDir, verbose, width, height, withoutEnlargement, rotate } = options
   const ext = path.extname(filePath)
   const baseName = path.basename(filePath, ext)
   const inputDir = path.dirname(filePath)
@@ -112,6 +113,11 @@ async function convertImage(
       try {
         // Convert original file to intermediate PNG
         const sharpInstance = sharp(filePath)
+        if (rotate !== undefined) {
+          sharpInstance.rotate(rotate)
+        } else {
+          sharpInstance.rotate()
+        }
         if (width || height) {
           sharpInstance.resize({ width, height, withoutEnlargement })
         }
@@ -158,6 +164,11 @@ async function convertImage(
 
     try {
       const sharpInstance = sharp(filePath)
+      if (rotate !== undefined) {
+        sharpInstance.rotate(rotate)
+      } else {
+        sharpInstance.rotate()
+      }
       if (width || height) {
         sharpInstance.resize({ width, height, withoutEnlargement })
       }
@@ -189,6 +200,7 @@ async function convertDirectory(
     width?: number
     height?: number
     withoutEnlargement?: boolean
+    rotate?: number
   }
 ) {
   const entries = await fs.promises.readdir(dirPath)
@@ -212,6 +224,7 @@ program
   .option('--verbose', 'Enable detailed logging', false)
   .option('-w, --width <number>', 'Resize to width (pixels)')
   .option('-h, --height <number>', 'Resize to height (pixels)')
+  .option('-r, --rotate <angle>', 'Rotate image by angle (degrees)')
   .option('--no-enlargement', 'Do not enlarge image if source is smaller')
   .action(async (source: string, options: {
     formats: string[]
@@ -219,6 +232,7 @@ program
     verbose?: boolean
     width?: string
     height?: string
+    rotate?: string
     enlargement: boolean
   }) => {
     checkCjxlAvailability() // Warn if cjxl isn't available
@@ -240,6 +254,7 @@ program
 
     const width = options.width ? parseInt(options.width, 10) : undefined
     const height = options.height ? parseInt(options.height, 10) : undefined
+    const rotate = options.rotate ? parseInt(options.rotate, 10) : undefined
 
     try {
       const stat = await fs.promises.stat(source)
@@ -251,6 +266,7 @@ program
           width,
           height,
           withoutEnlargement: !options.enlargement,
+          rotate,
         })
       } else if (stat.isDirectory()) {
         await convertDirectory(source, formats, {
@@ -259,6 +275,7 @@ program
           width,
           height,
           withoutEnlargement: !options.enlargement,
+          rotate,
         })
       } else {
         console.error('❌ Source must be a file or directory.')
