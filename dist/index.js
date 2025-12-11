@@ -3,10 +3,12 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
+import process from 'node:process';
 // Third-party modules
 import * as readline from 'readline';
 import { Command } from 'commander';
 import sharp from 'sharp';
+
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif'];
 // All supported formats including jpegxl via cjxl fallback

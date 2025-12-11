@@ -32,7 +32,7 @@ The main application logic is contained within `src/index.ts`.
 To run the CLI for development and testing:
 
 ```bash
-npx tsx src/index.ts <path-to-image-or-dir> --formats <format1> <format2> --out <output-dir> [--width <pixels>] [--height <pixels>] [--no-enlargement]
+npx tsx src/index.ts <path-to-image-or-dir> --formats <format1> <format2> --out <output-dir> [options]
 ```
 
 - Example:
@@ -48,6 +48,11 @@ npx tsx src/index.ts <path-to-image-or-dir> --formats <format1> <format2> --out 
 - Example with resizing (no enlargement):
   ```bash
   npx tsx src/index.ts ./images/my-image.png --formats jpg --width 3000 --no-enlargement --out ./resized
+  ```
+
+- Example with rotation and grayscale:
+  ```bash
+  npx tsx src/index.ts ./images/my-image.png --formats png --rotate 90 --grayscale --out ./processed
   ```
 
 ### Testing

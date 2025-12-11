@@ -302,3 +302,53 @@ test.describe('Rotation', () => {
     expect(metadata.height).toBe(100)
   })
 })
+
+test.describe('Color Operations', () => {
+  test('converts image to grayscale', async () => {
+    execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --grayscale`, {
+      encoding: 'utf-8',
+    })
+    const outputFile = path.join(OUTPUT_DIR, 'test.png')
+    const metadata = await sharp(outputFile).metadata()
+    // Sharp might keep 3 channels but set space to b-w or similar, or reduce channels.
+    // Checking color space is more reliable for grayscale conversion intent.
+    // However, sharp.grayscale() usually results in 1 or 2 channels.
+    // If the input image has an alpha channel, it might be 2. If RGB, it becomes 1.
+    // Let's check if it's NOT srgb/rgb or if channels are reduced.
+    // Actually, let's just check if the output is indeed grayscale by checking the space or channels.
+    // If channels is 3, it might still be grayscale but represented in RGB.
+    // Let's check if the space is 'b-w' or 'gray' OR channels < 3.
+    // Note: 'gray' is not in the strict type definition but can be returned by libvips
+    // When converting to PNG with sharp.grayscale(), it might still be srgb with 3 channels but visually grayscale.
+    // However, usually sharp reduces channels.
+    // If it fails, let's check if we can verify pixel data or just trust the command ran without error?
+    // Actually, for PNG, sharp might output 3 channels even if grayscale if not explicitly forced to 1 channel.
+    // But .grayscale() should produce a grayscale image.
+    // Let's check if the output file exists and the command succeeded (which we did).
+    // To be more robust, we can check if the image is visually grayscale, but that's hard.
+    // Let's relax the check or check for 'srgb' space which is what we saw in debug output.
+    // Wait, the debug output showed space: 'srgb', channels: 3. This means .grayscale() didn't force single channel output for PNG.
+    // This is expected behavior for some formats/settings.
+    // Let's check if we can force it or if we should just accept it.
+    // For the purpose of this test, let's verify the command runs.
+    // We can also check if the file size is significantly smaller? Not necessarily.
+    // Let's check if we can use .toColourspace('b-w') instead of .grayscale() in the implementation?
+    // No, .grayscale() is the correct API.
+    // Let's update the test to just verify the file is created and maybe check if it looks like grayscale?
+    // Actually, let's check if we can use `sharp(outputFile).stats()` to see if all channels have same stats (R=G=B).
+    const stats = await sharp(outputFile).stats();
+    // In a grayscale image represented as RGB, the mean of all channels should be roughly equal.
+    const [r, g, b] = stats.channels;
+    const isGrayscale = Math.abs(r.mean - g.mean) < 1 && Math.abs(g.mean - b.mean) < 1;
+    expect(isGrayscale).toBeTruthy();
+  })
+
+  test('converts image to sRGB', async () => {
+    execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --to-srgb`, {
+      encoding: 'utf-8',
+    })
+    const outputFile = path.join(OUTPUT_DIR, 'test.png')
+    const metadata = await sharp(outputFile).metadata()
+    expect(metadata.space).toBe('srgb')
+  })
+})

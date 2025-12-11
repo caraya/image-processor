@@ -58,5 +58,7 @@ npx tsx src/index.ts <source> --formats <formats...> [options]
 | -h, --height | Resize to height (pixels) |
 | -r, --rotate | Rotate image by angle (degrees) |
 | --no-enlargement | Do not enlarge image if source is smaller than target dimensions |
+| --grayscale | Convert to grayscale |
+| --to-srgb | Convert to sRGB color space |
 | --verbose | Enable detailed logging |
 | -h, --help | Show usage information |

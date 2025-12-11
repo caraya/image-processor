@@ -60,6 +60,8 @@ npx tsx src/index.ts <source> [options]
 | `--height <px>` | Resize height. | If width is omitted, aspect ratio is preserved. |
 | `--no-enlargement` | Prevent upscaling. | Passed to Sharp's `resize` options. |
 | `--rotate <deg>` | Rotate image. | Auto-orients based on EXIF if omitted. |
+| `--grayscale` | Grayscale conversion. | Reduces image to single channel (or b-w). |
+| `--to-srgb` | Color space conversion. | Ensures web compatibility. |
 | `--verbose` | Detailed logging. | Toggles `stdio` inheritance for child processes (`cjxl`). |
 
 ## 🧪 Integration Testing Strategy

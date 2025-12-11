@@ -5,6 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { execSync, spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
+import process from 'node:process'
 // Third-party modules
 import * as readline from 'readline'
 import { Command } from 'commander'
@@ -67,6 +68,10 @@ async function promptOverwrite(filePath: string): Promise<'yes' | 'no' | 'all' |
  * @param options.verbose - Whether to enable verbose logging.
  * @param options.width - Optional width to resize the image to.
  * @param options.height - Optional height to resize the image to.
+ * @param options.withoutEnlargement - Whether to skip resizing if the image is smaller than the target dimensions.
+ * @param options.rotate - Optional angle to rotate the image by.
+ * @param options.grayscale - Whether to convert the image to grayscale.
+ * @param options.toSrgb - Whether to convert the image to sRGB color space.
  */
 async function convertImage(
   filePath: string,
@@ -78,9 +83,11 @@ async function convertImage(
     height?: number
     withoutEnlargement?: boolean
     rotate?: number
+    grayscale?: boolean
+    toSrgb?: boolean
   }
 ): Promise<void> {
-  const { outputDir, verbose, width, height, withoutEnlargement, rotate } = options
+  const { outputDir, verbose, width, height, withoutEnlargement, rotate, grayscale, toSrgb } = options
   const ext = path.extname(filePath)
   const baseName = path.basename(filePath, ext)
   const inputDir = path.dirname(filePath)
@@ -118,6 +125,9 @@ async function convertImage(
         } else {
           sharpInstance.rotate()
         }
+        if (grayscale) sharpInstance.grayscale()
+        if (toSrgb) sharpInstance.toColourspace('srgb')
+
         if (width || height) {
           sharpInstance.resize({ width, height, withoutEnlargement })
         }
@@ -169,6 +179,9 @@ async function convertImage(
       } else {
         sharpInstance.rotate()
       }
+      if (grayscale) sharpInstance.grayscale()
+      if (toSrgb) sharpInstance.toColourspace('srgb')
+
       if (width || height) {
         sharpInstance.resize({ width, height, withoutEnlargement })
       }
@@ -190,6 +203,10 @@ async function convertImage(
  * @param options.verbose - Whether to enable verbose logging.
  * @param options.width - Optional width to resize the images to.
  * @param options.height - Optional height to resize the images to.
+ * @param options.withoutEnlargement - Whether to skip resizing if the image is smaller than the target dimensions.
+ * @param options.rotate - Optional angle to rotate the images by.
+ * @param options.grayscale - Whether to convert the images to grayscale.
+ * @param options.toSrgb - Whether to convert the images to sRGB color space.
  */
 async function convertDirectory(
   dirPath: string,
@@ -201,6 +218,8 @@ async function convertDirectory(
     height?: number
     withoutEnlargement?: boolean
     rotate?: number
+    grayscale?: boolean
+    toSrgb?: boolean
   }
 ) {
   const entries = await fs.promises.readdir(dirPath)
@@ -226,6 +245,8 @@ program
   .option('-h, --height <number>', 'Resize to height (pixels)')
   .option('-r, --rotate <angle>', 'Rotate image by angle (degrees)')
   .option('--no-enlargement', 'Do not enlarge image if source is smaller')
+  .option('--grayscale', 'Convert to grayscale')
+  .option('--to-srgb', 'Convert to sRGB color space')
   .action(async (source: string, options: {
     formats: string[]
     out?: string
@@ -234,6 +255,8 @@ program
     height?: string
     rotate?: string
     enlargement: boolean
+    grayscale?: boolean
+    toSrgb?: boolean
   }) => {
     checkCjxlAvailability() // Warn if cjxl isn't available
 
@@ -267,6 +290,8 @@ program
           height,
           withoutEnlargement: !options.enlargement,
           rotate,
+          grayscale: options.grayscale,
+          toSrgb: options.toSrgb,
         })
       } else if (stat.isDirectory()) {
         await convertDirectory(source, formats, {
@@ -276,6 +301,8 @@ program
           height,
           withoutEnlargement: !options.enlargement,
           rotate,
+          grayscale: options.grayscale,
+          toSrgb: options.toSrgb,
         })
       } else {
         console.error('❌ Source must be a file or directory.')
