@@ -54,6 +54,11 @@ npx tsx src/index.ts <source> --formats <formats...> [options]
 | --- | --- |
 | -f, --formats | Output format(s). Use multiple (e.g. jpg png) or "all" for all supported |
 | -o, --out | Output directory. Defaults to same directory as source |
+| --jpg-quality | JPEG quality (1-100). Default: 80 |
+| --png-quality | PNG quality (1-100). Default: 100 |
+| --webp-quality | WebP quality (1-100). Default: 80 |
+| --avif-quality | AVIF quality (1-100). Default: 50 |
+| --jpegxl-quality | JPEG XL quality (1-100). Default: 85 |
 | -w, --width | Resize to width (pixels) |
 | -h, --height | Resize to height (pixels) |
 | -r, --rotate | Rotate image by angle (degrees) |

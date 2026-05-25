@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title> Home</title>
+
+  <script src="https://cdn.jsdelivr.net/gh/google/code-prettify@master/loader/run_prettify.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="./build/entry.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,400,700|Inconsolata,700" rel="stylesheet">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+  <link type="text/css" rel="stylesheet" href="https://jmblog.github.io/color-themes-for-google-code-prettify/themes/tomorrow-night.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/app.min.css">
+  <link type="text/css" rel="stylesheet" href="styles/iframe.css">
+  <link type="text/css" rel="stylesheet" href="">
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+
+  
+</head>
+
+
+
+<body class="layout small-header">
+    <div id="stickyNavbarOverlay"></div>
+    
+
+<div class="top-nav">
+    <div class="inner">
+        <a id="hamburger" role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+        <div class="logo">
+            
+            
+        </div>
+        <div class="menu">
+            
+            <div class="navigation">
+                <a
+                    href="index.html"
+                    class="link"
+                >
+                    Documentation
+                </a>
+                
+                
+                
+            </div>
+        </div>
+    </div>
+</div>
+    <div id="main">
+        <div
+            class="sidebar "
+            id="sidebarNav"
+        >
+            
+            <nav>
+                
+                    <h2><a href="index.html">Documentation</a></h2><div class="category"><h3>Global</h3><ul><li><a href="global.html#checkCjxlAvailability">checkCjxlAvailability</a></li><li><a href="global.html#convertDirectory">convertDirectory</a></li><li><a href="global.html#convertImage">convertImage</a></li><li><a href="global.html#parseQualityOption">parseQualityOption</a></li><li><a href="global.html#promptOverwrite">promptOverwrite</a></li></ul></div>
+                
+            </nav>
+        </div>
+        <div class="core" id="main-content-wrapper">
+            <div class="content">
+                <header class="page-title">
+                    <p></p>
+                    <h1>Home</h1>
+                </header>
+                
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>Image Processor CLI - Technical Explainer</h1>
+<p>This document details the architecture, implementation patterns, and testing strategy for the Image Processor CLI. It is intended for developers looking to understand the internal mechanics or contribute to the project.</p>
+<h2>🛠 Technology Stack &amp; Rationale</h2>
+<ul>
+<li><strong><a href="https://www.typescriptlang.org/">TypeScript</a></strong>: Enforces type safety, particularly useful for handling the various configuration options and external library interfaces.</li>
+<li><strong><a href="https://github.com/tj/commander.js">Commander.js</a></strong>: Chosen for its robust argument parsing and automatic help generation, simplifying the CLI interface implementation.</li>
+<li><strong><a href="https://sharp.pixelplumbing.com/">Sharp</a></strong>: The core engine for image manipulation. Selected for its high performance (using libvips) and low memory footprint compared to other Node.js image libraries.</li>
+<li><strong><a href="https://github.com/libjxl/libjxl">libjxl (cjxl)</a></strong>: Integrated as an external binary via <code>child_process</code>. This hybrid approach allows the tool to support the modern JPEG XL format before native Node.js bindings are fully mature or available in Sharp.</li>
+<li><strong><a href="https://playwright.dev/">Playwright</a></strong>: While primarily a browser testing tool, its test runner (<code>@playwright/test</code>) provides a powerful assertion library and parallel execution capabilities that are excellent for integration testing CLI tools.</li>
+</ul>
+<h2>🏗 Architecture &amp; Implementation Patterns</h2>
+<p>The application logic is centralized in <code>src/index.ts</code> to maintain simplicity, but follows distinct patterns for different tasks.</p>
+<h3>1. Hybrid Conversion Pipeline</h3>
+<p>The tool implements a strategy pattern to handle different formats:</p>
+<ul>
+<li><strong>Native Processing</strong>: Formats like JPG, PNG, WebP, and AVIF are handled directly in-process using <code>sharp</code>. This is fast and efficient.</li>
+<li><strong>External Process Delegation</strong>: JPEG XL (<code>.jxl</code>) conversion requires a different approach. The tool:
+<ol>
+<li>Converts the source image to a temporary intermediate PNG using <code>sharp</code>.</li>
+<li>Spawns a child process to run the <code>cjxl</code> binary, converting the PNG to JXL.</li>
+<li>Cleans up the intermediate file.</li>
+</ol>
+</li>
+</ul>
+<p>This pattern allows the CLI to extend support to tools that don't have Node.js bindings yet.</p>
+<h3>2. Sequential Batch Processing</h3>
+<p>When processing directories, the tool uses sequential <code>await</code> loops rather than <code>Promise.all</code>.</p>
+<ul>
+<li>
+<p><strong>Reasoning</strong>: Image processing is CPU and memory intensive. Running conversions in parallel (e.g., <code>Promise.all</code>) could easily exhaust system resources or hit <code>ulimit</code> restrictions on file descriptors when processing large directories.</p>
+</li>
+<li>
+<p><strong>Implementation</strong>:</p>
+<pre class="prettyprint source lang-typescript"><code>for (const file of imageFiles) {
+  await convertImage(path.join(dirPath, file), formats, options)
+}
+</code></pre>
+</li>
+</ul>
+<h3>3. Interactive CLI UX</h3>
+<p>The tool uses <code>readline</code> to handle interactive prompts (e.g., overwrite confirmation). This requires careful management of the <code>process.stdin</code> stream to ensure it doesn't interfere with the command execution flow.</p>
+<h2>💻 Usage Reference</h2>
+<h3>Syntax</h3>
+<pre class="prettyprint source lang-bash"><code>npx tsx src/index.ts &lt;source> [options]
+</code></pre>
+<h3>Key Options</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Option</th>
+<th style="text-align:left">Description</th>
+<th style="text-align:left">Implementation Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>--formats &lt;list&gt;</code></td>
+<td style="text-align:left">Output formats (e.g., <code>webp avif</code>).</td>
+<td style="text-align:left">Validated against a whitelist. <code>all</code> expands to all supported formats.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--jpg-quality &lt;1-100&gt;</code></td>
+<td style="text-align:left">JPEG output quality.</td>
+<td style="text-align:left">Default is 80. Override via CLI flag; passed to Sharp as <code>quality</code> for JPG output.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--png-quality &lt;1-100&gt;</code></td>
+<td style="text-align:left">PNG output quality.</td>
+<td style="text-align:left">Default is 100. Override via CLI flag; passed to Sharp as <code>quality</code> for PNG output.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--webp-quality &lt;1-100&gt;</code></td>
+<td style="text-align:left">WebP output quality.</td>
+<td style="text-align:left">Default is 80. Override via CLI flag; passed to Sharp as <code>quality</code> for WebP output.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--avif-quality &lt;1-100&gt;</code></td>
+<td style="text-align:left">AVIF output quality.</td>
+<td style="text-align:left">Default is 50. Override via CLI flag; passed to Sharp as <code>quality</code> for AVIF output.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--jpegxl-quality &lt;1-100&gt;</code></td>
+<td style="text-align:left">JPEG XL output quality.</td>
+<td style="text-align:left">Default is 85. Override via CLI flag; passed through to <code>cjxl --quality</code>.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--width &lt;px&gt;</code></td>
+<td style="text-align:left">Resize width.</td>
+<td style="text-align:left">If height is omitted, aspect ratio is preserved.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--height &lt;px&gt;</code></td>
+<td style="text-align:left">Resize height.</td>
+<td style="text-align:left">If width is omitted, aspect ratio is preserved.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--no-enlargement</code></td>
+<td style="text-align:left">Prevent upscaling.</td>
+<td style="text-align:left">Passed to Sharp's <code>resize</code> options.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--rotate &lt;deg&gt;</code></td>
+<td style="text-align:left">Rotate image.</td>
+<td style="text-align:left">Auto-orients based on EXIF if omitted.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--grayscale</code></td>
+<td style="text-align:left">Grayscale conversion.</td>
+<td style="text-align:left">Reduces image to single channel (or b-w).</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--to-srgb</code></td>
+<td style="text-align:left">Color space conversion.</td>
+<td style="text-align:left">Ensures web compatibility.</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>--verbose</code></td>
+<td style="text-align:left">Detailed logging.</td>
+<td style="text-align:left">Toggles <code>stdio</code> inheritance for child processes (<code>cjxl</code>).</td>
+</tr>
+</tbody>
+</table>
+<h2>🧪 Integration Testing Strategy</h2>
+<p>The project uses <strong>Playwright</strong> for end-to-end integration tests. Instead of mocking the file system or the <code>sharp</code> library, tests execute the actual CLI binary against real fixture files.</p>
+<h3>Test Harness (<code>tests/image_converter_cli.spec.ts</code>)</h3>
+<p>The test suite manages the lifecycle of a test run:</p>
+<ol>
+<li><strong>Setup</strong>: A dedicated <code>converted-test</code> directory is cleaned/created before each test.</li>
+<li><strong>Execution</strong>:
+<ul>
+<li><code>execSync</code>: Used for standard &quot;fire and forget&quot; commands.</li>
+<li><code>spawn</code>: Used for testing interactive features (like piping <code>y</code> or <code>n</code> to the overwrite prompt).</li>
+</ul>
+</li>
+<li><strong>Verification</strong>:
+<ul>
+<li><strong>Existence</strong>: Checks if output files are created.</li>
+<li><strong>Content</strong>: Uses <code>sharp</code> to read metadata (dimensions) of generated files to verify resizing logic.</li>
+</ul>
+</li>
+</ol>
+<h3>Example: Verifying Resize Logic</h3>
+<p>This test ensures that the CLI correctly passes parameters to the underlying Sharp instance and that aspect ratio calculations are correct.</p>
+<pre class="prettyprint source lang-typescript"><code>test('resizes image with given width and maintains aspect ratio', async () => {
+  const width = 150
+  // Execute CLI
+  execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats png --out ${OUTPUT_DIR} --width ${width}`, {
+    encoding: 'utf-8',
+  })
+
+  // Verify output using Sharp metadata
+  const outputFile = path.join(OUTPUT_DIR, 'test.png')
+  const metadata = await sharp(outputFile).metadata()
+
+  expect(metadata.width).toBe(width)
+  // Aspect ratio check would go here
+})
+</code></pre>
+<h2>📊 Logic Flow Diagram</h2>
+<pre class="prettyprint source lang-mermaid"><code>graph TD
+    Start([User Input]) --> Parse[&quot;Parse Args (Commander)&quot;]
+    Parse --> Validate{Valid Formats?}
+    Validate -- No --> Error[Exit 1]
+    Validate -- Yes --> Detect{File or Dir?}
+
+    Detect -- Directory --> Loop[Iterate Files]
+    Detect -- File --> Process[Process Single File]
+    Loop --> Process
+
+    Process --> Rotate{Rotate?}
+    Rotate -- Yes --> SharpRotate[&quot;Sharp .rotate(angle)&quot;]
+    Rotate -- No --> SharpAutoOrient[&quot;Sharp .rotate() (Auto)&quot;]
+
+    SharpRotate --> Resize{Resize Args?}
+    SharpAutoOrient --> Resize
+
+    Resize -- Yes --> SharpResize[&quot;Sharp .resize()&quot;]
+    Resize -- No --> SharpLoad[Sharp Load]
+
+    SharpResize --> FormatLoop{Iterate Formats}
+    SharpLoad --> FormatLoop
+
+    FormatLoop --> IsJXL{Format == jpegxl?}
+
+    %% JXL Path
+    IsJXL -- Yes --> CheckCJXL[Check cjxl binary]
+    CheckCJXL --> GenTemp[Gen Temp PNG]
+    GenTemp --> SpawnCJXL[Spawn cjxl process]
+    SpawnCJXL --> CleanTemp[Delete Temp PNG]
+    CleanTemp --> Next
+
+    %% Standard Path
+    IsJXL -- No --> SharpConvert[&quot;Sharp .toFormat()&quot;]
+    SharpConvert --> Write[Write to Disk]
+    Write --> Next
+
+    Next{More Formats?} -- Yes --> FormatLoop
+    Next -- No --> Finish([Done])
+</code></pre></article>
+    </section>
+
+
+
+
+
+
+            </div>
+            
+            <footer class="footer">
+                <div class="content has-text-centered">
+                    <p>Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 4.0.5</a></p>
+                    <p class="sidebar-created-by">
+                        <a href="https://github.com/SoftwareBrothers/better-docs" target="_blank">BetterDocs theme</a> provided with <i class="fas fa-heart"></i> by
+                        <a href="http://softwarebrothers.co" target="_blank">SoftwareBrothers - JavaScript Development Agency</a>
+                    </p>
+                </div>
+            </footer>
+            
+        </div>
+        <div id="side-nav" class="side-nav">
+        </div>
+    </div>
+<script src="scripts/app.min.js"></script>
+<script>PR.prettyPrint();</script>
+<script src="scripts/linenumber.js"> </script>
+
+
+</body>
+</html>

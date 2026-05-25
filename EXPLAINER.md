@@ -56,6 +56,11 @@ npx tsx src/index.ts <source> [options]
 | Option | Description | Implementation Note |
 | :--- | :--- | :--- |
 | `--formats <list>` | Output formats (e.g., `webp avif`). | Validated against a whitelist. `all` expands to all supported formats. |
+| `--jpg-quality <1-100>` | JPEG output quality. | Default is 80. Override via CLI flag; passed to Sharp as `quality` for JPG output. |
+| `--png-quality <1-100>` | PNG output quality. | Default is 100. Override via CLI flag; passed to Sharp as `quality` for PNG output. |
+| `--webp-quality <1-100>` | WebP output quality. | Default is 80. Override via CLI flag; passed to Sharp as `quality` for WebP output. |
+| `--avif-quality <1-100>` | AVIF output quality. | Default is 50. Override via CLI flag; passed to Sharp as `quality` for AVIF output. |
+| `--jpegxl-quality <1-100>` | JPEG XL output quality. | Default is 85. Override via CLI flag; passed through to `cjxl --quality`. |
 | `--width <px>` | Resize width. | If height is omitted, aspect ratio is preserved. |
 | `--height <px>` | Resize height. | If width is omitted, aspect ratio is preserved. |
 | `--no-enlargement` | Prevent upscaling. | Passed to Sharp's `resize` options. |

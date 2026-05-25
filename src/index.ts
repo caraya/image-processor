@@ -14,6 +14,22 @@ import sharp from 'sharp'
 const require = createRequire(import.meta.url)
 const pkg = require('../package.json')
 
+type FormatQuality = {
+  jpg?: number
+  png?: number
+  webp?: number
+  avif?: number
+  jpegxl?: number
+}
+
+const DEFAULT_FORMAT_QUALITY: Required<FormatQuality> = {
+  jpg: 80,
+  png: 100,
+  webp: 80,
+  avif: 50,
+  jpegxl: 85,
+}
+
 // Supported formats directly by sharp
 const SHARP_FORMATS = ['jpg', 'png', 'webp', 'avif']
 // All supported formats including jpegxl via cjxl fallback
@@ -37,6 +53,21 @@ function checkCjxlAvailability() {
   } catch {
     console.warn('⚠️  cjxl is not installed or not in your PATH. JPEG XL output will fail.')
   }
+}
+
+/**
+ * Parses and validates a quality option (1-100).
+ */
+function parseQualityOption(value: string | undefined, optionName: string): number | undefined {
+  if (!value) return undefined
+
+  const parsed = parseInt(value, 10)
+  if (Number.isNaN(parsed) || parsed < 1 || parsed > 100) {
+    console.error(`❌ ${optionName} must be an integer between 1 and 100.`)
+    process.exit(1)
+  }
+
+  return parsed
 }
 
 /**
@@ -72,6 +103,12 @@ async function promptOverwrite(filePath: string): Promise<'yes' | 'no' | 'all' |
  * @param options.rotate - Optional angle to rotate the image by.
  * @param options.grayscale - Whether to convert the image to grayscale.
  * @param options.toSrgb - Whether to convert the image to sRGB color space.
+ * @param options.quality - Optional per-format quality overrides/defaults used during output.
+ * @param options.quality.jpg - JPEG quality value (1-100).
+ * @param options.quality.png - PNG quality value (1-100).
+ * @param options.quality.webp - WebP quality value (1-100).
+ * @param options.quality.avif - AVIF quality value (1-100).
+ * @param options.quality.jpegxl - JPEG XL quality value (1-100), passed to cjxl.
  */
 async function convertImage(
   filePath: string,
@@ -85,9 +122,10 @@ async function convertImage(
     rotate?: number
     grayscale?: boolean
     toSrgb?: boolean
+    quality?: FormatQuality
   }
 ): Promise<void> {
-  const { outputDir, verbose, width, height, withoutEnlargement, rotate, grayscale, toSrgb } = options
+  const { outputDir, verbose, width, height, withoutEnlargement, rotate, grayscale, toSrgb, quality } = options
   const ext = path.extname(filePath)
   const baseName = path.basename(filePath, ext)
   const inputDir = path.dirname(filePath)
@@ -101,6 +139,7 @@ async function convertImage(
     if (format === 'jpegxl') {
       const intermediatePng = `${outputBase}.temp.png`
       const finalJxl = `${outputBase}.jxl`
+      const jpegxlQuality = quality?.jpegxl
 
       if (verbose) console.log(`🔧 Creating intermediate PNG for JXL: ${intermediatePng}`)
       const jxlExists = fs.existsSync(finalJxl)
@@ -132,11 +171,15 @@ async function convertImage(
           sharpInstance.resize({ width, height, withoutEnlargement })
         }
         await sharpInstance.toFormat('png').toFile(intermediatePng)
-        if (verbose) console.log(`📦 Running: cjxl ${intermediatePng} ${finalJxl}`)
+        const cjxlArgs = [intermediatePng, finalJxl]
+        if (jpegxlQuality !== undefined) {
+          cjxlArgs.push('--quality', String(jpegxlQuality))
+        }
+        if (verbose) console.log(`📦 Running: cjxl ${cjxlArgs.join(' ')}`)
 
         // Spawn cjxl subprocess to convert PNG to JXL
         await new Promise<void>((resolve, reject) => {
-          const proc = spawn('cjxl', [intermediatePng, finalJxl], {
+          const proc = spawn('cjxl', cjxlArgs, {
             stdio: verbose ? 'inherit' : 'ignore',
           })
           proc.on('error', (err) => reject(new Error(`cjxl error: ${err.message}`)))
@@ -185,7 +228,14 @@ async function convertImage(
       if (width || height) {
         sharpInstance.resize({ width, height, withoutEnlargement })
       }
-      await sharpInstance.toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
+      const formatQuality = quality?.[format as keyof FormatQuality]
+      if (formatQuality !== undefined) {
+        await sharpInstance
+          .toFormat(format as keyof sharp.FormatEnum, { quality: formatQuality } as any)
+          .toFile(outputPath)
+      } else {
+        await sharpInstance.toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
+      }
       console.log(`✅ Converted: ${filePath} -> ${outputPath}`)
     } catch (err: any) {
       console.error(`❌ Failed to convert to ${format}: ${err.message}`)
@@ -207,6 +257,12 @@ async function convertImage(
  * @param options.rotate - Optional angle to rotate the images by.
  * @param options.grayscale - Whether to convert the images to grayscale.
  * @param options.toSrgb - Whether to convert the images to sRGB color space.
+ * @param options.quality - Optional per-format quality overrides/defaults used during output.
+ * @param options.quality.jpg - JPEG quality value (1-100).
+ * @param options.quality.png - PNG quality value (1-100).
+ * @param options.quality.webp - WebP quality value (1-100).
+ * @param options.quality.avif - AVIF quality value (1-100).
+ * @param options.quality.jpegxl - JPEG XL quality value (1-100), passed to cjxl.
  */
 async function convertDirectory(
   dirPath: string,
@@ -220,6 +276,7 @@ async function convertDirectory(
     rotate?: number
     grayscale?: boolean
     toSrgb?: boolean
+    quality?: FormatQuality
   }
 ) {
   const entries = await fs.promises.readdir(dirPath)
@@ -241,6 +298,11 @@ program
   .option('-f, --formats <formats...>', 'Target formats (jpg, png, webp, avif, jpegxl, or all)', [])
   .option('-o, --out <dir>', 'Output directory (default: same as source)')
   .option('--verbose', 'Enable detailed logging', false)
+  .option('--jpg-quality <number>', 'JPEG output quality (1-100)')
+  .option('--png-quality <number>', 'PNG output quality (1-100)')
+  .option('--webp-quality <number>', 'WebP output quality (1-100)')
+  .option('--avif-quality <number>', 'AVIF output quality (1-100)')
+  .option('--jpegxl-quality <number>', 'JPEG XL output quality (1-100)')
   .option('-w, --width <number>', 'Resize to width (pixels)')
   .option('-h, --height <number>', 'Resize to height (pixels)')
   .option('-r, --rotate <angle>', 'Rotate image by angle (degrees)')
@@ -254,6 +316,11 @@ program
     width?: string
     height?: string
     rotate?: string
+    jpgQuality?: string
+    pngQuality?: string
+    webpQuality?: string
+    avifQuality?: string
+    jpegxlQuality?: string
     enlargement: boolean
     grayscale?: boolean
     toSrgb?: boolean
@@ -278,6 +345,21 @@ program
     const width = options.width ? parseInt(options.width, 10) : undefined
     const height = options.height ? parseInt(options.height, 10) : undefined
     const rotate = options.rotate ? parseInt(options.rotate, 10) : undefined
+    const quality: FormatQuality = {
+      ...DEFAULT_FORMAT_QUALITY,
+      jpg: parseQualityOption(options.jpgQuality, '--jpg-quality'),
+      png: parseQualityOption(options.pngQuality, '--png-quality'),
+      webp: parseQualityOption(options.webpQuality, '--webp-quality'),
+      avif: parseQualityOption(options.avifQuality, '--avif-quality'),
+      jpegxl: parseQualityOption(options.jpegxlQuality, '--jpegxl-quality'),
+    }
+
+    // Preserve defaults for flags that were not provided.
+    if (quality.jpg === undefined) quality.jpg = DEFAULT_FORMAT_QUALITY.jpg
+    if (quality.png === undefined) quality.png = DEFAULT_FORMAT_QUALITY.png
+    if (quality.webp === undefined) quality.webp = DEFAULT_FORMAT_QUALITY.webp
+    if (quality.avif === undefined) quality.avif = DEFAULT_FORMAT_QUALITY.avif
+    if (quality.jpegxl === undefined) quality.jpegxl = DEFAULT_FORMAT_QUALITY.jpegxl
 
     try {
       const stat = await fs.promises.stat(source)
@@ -292,6 +374,7 @@ program
           rotate,
           grayscale: options.grayscale,
           toSrgb: options.toSrgb,
+          quality,
         })
       } else if (stat.isDirectory()) {
         await convertDirectory(source, formats, {
@@ -303,6 +386,7 @@ program
           rotate,
           grayscale: options.grayscale,
           toSrgb: options.toSrgb,
+          quality,
         })
       } else {
         console.error('❌ Source must be a file or directory.')
