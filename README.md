@@ -1,6 +1,6 @@
 # 🖼️ Image Converter CLI
 
-A powerful and flexible CLI tool to convert image files or directories of images into various formats using [Sharp](https://github.com/lovell/sharp) and [cjxl](https://github.com/libjxl/libjxl) for JPEG XL support.
+A powerful and flexible CLI tool to convert image files or directories of images into various formats using [Sharp](https://github.com/lovell/sharp) and a WebAssembly JPEG XL encoder.
 
 ## ✨ Features
 
@@ -8,8 +8,9 @@ A powerful and flexible CLI tool to convert image files or directories of images
 * Supports output formats: `jpg`, `png`, `webp`, `avif`, `jpegxl`
 * Optional verbose logging
 * Handles overwriting with prompts (`yes`, `no`, `all`, `quit`)
+* Prevents in-place overwrite by appending numeric suffixes (for example, `-1`)
 * Supports output to custom directory
-* Fallback to `cjxl` for JPEG XL conversion
+* Uses `@jsquash/jxl` (WASM) for JPEG XL conversion with no system-level dependency
 * Interactive CLI prompts for safer operations
 
 ---
@@ -22,27 +23,15 @@ Clone this repo and install dependencies:
 npm install
 ```
 
-Make sure you have cjxl installed and available in your system path for JPEG XL support.
-
-## Install cjxl
-
-### macOS (with Homebrew)
-
-```bash
-brew install jpeg-xl
-```
-
-### Ubuntu/Debian
-
-```bash
-sudo apt install libjxl-tools
-```
+No additional system packages are required for JPEG XL conversion.
 
 ## 🧪 Usage
 
 ```bash
 npx tsx src/index.ts <source> --formats <formats...> [options]
 ```
+
+If `--formats` is omitted, the CLI converts to all supported output formats by default.
 
 ## 🔤 Arguments
 
@@ -52,7 +41,7 @@ npx tsx src/index.ts <source> --formats <formats...> [options]
 
 | Flag | Description |
 | --- | --- |
-| -f, --formats | Output format(s). Use multiple (e.g. jpg png) or "all" for all supported |
+| -f, --formats | Output format(s). Use multiple (e.g. jpg png). If omitted (or set to "all"), all supported output formats are used |
 | -o, --out | Output directory. Defaults to same directory as source |
 | --jpg-quality | JPEG quality (1-100). Default: 80 |
 | --png-quality | PNG quality (1-100). Default: 100 |
@@ -65,5 +54,5 @@ npx tsx src/index.ts <source> --formats <formats...> [options]
 | --no-enlargement | Do not enlarge image if source is smaller than target dimensions |
 | --grayscale | Convert to grayscale |
 | --to-srgb | Convert to sRGB color space |
-| --verbose | Enable detailed logging |
+| --verbose | Enable detailed logging, including full error stacks/details on failures |
 | -h, --help | Show usage information |

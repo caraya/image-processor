@@ -7,7 +7,7 @@ This document details the architecture, implementation patterns, and testing str
 * **[TypeScript](https://www.typescriptlang.org/)**: Enforces type safety, particularly useful for handling the various configuration options and external library interfaces.
 * **[Commander.js](https://github.com/tj/commander.js)**: Chosen for its robust argument parsing and automatic help generation, simplifying the CLI interface implementation.
 * **[Sharp](https://sharp.pixelplumbing.com/)**: The core engine for image manipulation. Selected for its high performance (using libvips) and low memory footprint compared to other Node.js image libraries.
-* **[libjxl (cjxl)](https://github.com/libjxl/libjxl)**: Integrated as an external binary via `child_process`. This hybrid approach allows the tool to support the modern JPEG XL format before native Node.js bindings are fully mature or available in Sharp.
+* **[@jsquash/jxl](https://www.npmjs.com/package/@jsquash/jxl)**: Integrated as a WebAssembly encoder for JPEG XL output. This keeps the tool Node-centric and avoids external system-level dependencies.
 * **[Playwright](https://playwright.dev/)**: While primarily a browser testing tool, its test runner (`@playwright/test`) provides a powerful assertion library and parallel execution capabilities that are excellent for integration testing CLI tools.
 
 ## 🏗 Architecture & Implementation Patterns
@@ -19,12 +19,12 @@ The application logic is centralized in `src/index.ts` to maintain simplicity, b
 The tool implements a strategy pattern to handle different formats:
 
 * **Native Processing**: Formats like JPG, PNG, WebP, and AVIF are handled directly in-process using `sharp`. This is fast and efficient.
-* **External Process Delegation**: JPEG XL (`.jxl`) conversion requires a different approach. The tool:
-    1. Converts the source image to a temporary intermediate PNG using `sharp`.
-    2. Spawns a child process to run the `cjxl` binary, converting the PNG to JXL.
-    3. Cleans up the intermediate file.
+* **WASM JPEG XL Encoding**: JPEG XL (`.jxl`) conversion is handled by `@jsquash/jxl`. The tool:
+  1. Uses `sharp` to apply transformations and produce raw RGBA pixel data.
+  2. Encodes those pixels to JXL in-process via WebAssembly.
+  3. Writes the resulting `.jxl` bytes to disk.
 
-This pattern allows the CLI to extend support to tools that don't have Node.js bindings yet.
+This pattern allows JPEG XL support without requiring external binaries.
 
 ### 2. Sequential Batch Processing
 
@@ -43,6 +43,8 @@ When processing directories, the tool uses sequential `await` loops rather than 
 
 The tool uses `readline` to handle interactive prompts (e.g., overwrite confirmation). This requires careful management of the `process.stdin` stream to ensure it doesn't interfere with the command execution flow.
 
+When output would overwrite the input file path (for example, converting an `.avif` source to `.avif` in-place), the CLI auto-generates a numbered filename (e.g., `image-1.avif`) instead of prompting for overwrite.
+
 ## 💻 Usage Reference
 
 ### Syntax
@@ -51,23 +53,27 @@ The tool uses `readline` to handle interactive prompts (e.g., overwrite confirma
 npx tsx src/index.ts <source> [options]
 ```
 
+If `--formats` is omitted, the CLI defaults to all supported output formats.
+
 ### Key Options
 
 | Option | Description | Implementation Note |
 | :--- | :--- | :--- |
-| `--formats <list>` | Output formats (e.g., `webp avif`). | Validated against a whitelist. `all` expands to all supported formats. |
+| `--formats <list>` | Output formats (e.g., `webp avif`). | Validated against a whitelist. Omitted or `all` expands to all supported output formats. |
 | `--jpg-quality <1-100>` | JPEG output quality. | Default is 80. Override via CLI flag; passed to Sharp as `quality` for JPG output. |
 | `--png-quality <1-100>` | PNG output quality. | Default is 100. Override via CLI flag; passed to Sharp as `quality` for PNG output. |
 | `--webp-quality <1-100>` | WebP output quality. | Default is 80. Override via CLI flag; passed to Sharp as `quality` for WebP output. |
 | `--avif-quality <1-100>` | AVIF output quality. | Default is 50. Override via CLI flag; passed to Sharp as `quality` for AVIF output. |
-| `--jpegxl-quality <1-100>` | JPEG XL output quality. | Default is 85. Override via CLI flag; passed through to `cjxl --quality`. |
+| `--jpegxl-quality <1-100>` | JPEG XL output quality. | Default is 85. Override via CLI flag; passed to the WASM JXL encoder. |
 | `--width <px>` | Resize width. | If height is omitted, aspect ratio is preserved. |
 | `--height <px>` | Resize height. | If width is omitted, aspect ratio is preserved. |
 | `--no-enlargement` | Prevent upscaling. | Passed to Sharp's `resize` options. |
 | `--rotate <deg>` | Rotate image. | Auto-orients based on EXIF if omitted. |
 | `--grayscale` | Grayscale conversion. | Reduces image to single channel (or b-w). |
 | `--to-srgb` | Color space conversion. | Ensures web compatibility. |
-| `--verbose` | Detailed logging. | Toggles `stdio` inheritance for child processes (`cjxl`). |
+| `--verbose` | Detailed logging. | Enables additional conversion/encoder logs and prints full error stacks/details on failures. |
+
+Directory input scanning accepts: `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`.
 
 ## 🧪 Integration Testing Strategy
 
@@ -135,11 +141,10 @@ graph TD
     FormatLoop --> IsJXL{Format == jpegxl?}
 
     %% JXL Path
-    IsJXL -- Yes --> CheckCJXL[Check cjxl binary]
-    CheckCJXL --> GenTemp[Gen Temp PNG]
-    GenTemp --> SpawnCJXL[Spawn cjxl process]
-    SpawnCJXL --> CleanTemp[Delete Temp PNG]
-    CleanTemp --> Next
+    IsJXL -- Yes --> SharpRaw[Sharp to raw RGBA]
+    SharpRaw --> WasmEncode[WASM JXL encode]
+    WasmEncode --> WriteJXL[Write .jxl file]
+    WriteJXL --> Next
 
     %% Standard Path
     IsJXL -- No --> SharpConvert["Sharp .toFormat()"]

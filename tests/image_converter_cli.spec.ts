@@ -39,6 +39,24 @@ test.afterAll(() => {
 })
 
 test.describe('Basic Conversion', () => {
+  // Test: Convert image without specifying --formats
+  // Verifies default behavior outputs all sharp-native formats
+  test('defaults to all output formats when --formats is omitted', async () => {
+    execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --out ${OUTPUT_DIR}`, {
+      encoding: 'utf-8',
+    })
+
+    const jpg = path.join(OUTPUT_DIR, 'test.jpg')
+    const png = path.join(OUTPUT_DIR, 'test.png')
+    const webp = path.join(OUTPUT_DIR, 'test.webp')
+    const avif = path.join(OUTPUT_DIR, 'test.avif')
+
+    expect(fs.existsSync(jpg)).toBeTruthy()
+    expect(fs.existsSync(png)).toBeTruthy()
+    expect(fs.existsSync(webp)).toBeTruthy()
+    expect(fs.existsSync(avif)).toBeTruthy()
+  })
+
   // Test: Convert image to a single format
   // Verifies PNG output is generated
   test('converts image to one format', async () => {
@@ -106,63 +124,33 @@ test.describe('CLI Behavior', () => {
     const hashAfter = fileHash(filePath)
     expect(hashAfter).toBe(hashBefore) // File should remain unchanged
   })
+
+  // Test: Avoid in-place overwrite when source and output paths are identical
+  // Ensures a numeric suffix is added instead of prompting for overwrite
+  test('adds numeric suffix when output would overwrite input', async () => {
+    const inputAvif = path.join(OUTPUT_DIR, 'source.avif')
+    await sharp(IMAGE_PATH).toFormat('avif').toFile(inputAvif)
+
+    execSync(`npx tsx ${CLI_PATH} ${inputAvif} --formats avif`, {
+      encoding: 'utf-8',
+    })
+
+    const suffixedOutput = path.join(OUTPUT_DIR, 'source-1.avif')
+    expect(fs.existsSync(inputAvif)).toBeTruthy()
+    expect(fs.existsSync(suffixedOutput)).toBeTruthy()
+  })
 })
 
-test.describe('External Tools (cjxl)', () => {
-  // Test: JPEGXL conversion via cjxl CLI fallback
-  // Skips test if cjxl is not installed
-  test('converts image to jpegxl using cjxl', async () => {
-    try {
-      execSync('cjxl --version', { stdio: 'ignore' })
-      const result = execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats jpegxl --out ${OUTPUT_DIR}`, {
-        encoding: 'utf-8',
-      })
-      const jxl = path.join(OUTPUT_DIR, 'test.jxl')
-      expect(fs.existsSync(jxl)).toBeTruthy()
-      expect(result).toContain('✅ Created:')
-    } catch {
-      test.skip(true, 'cjxl is not installed. Skipping JPEG XL test.')
-    }
+test.describe('JPEG XL (WASM)', () => {
+  // Test: JPEG XL conversion via WASM encoder
+  test('converts image to jpegxl using @jsquash/jxl', async () => {
+    const result = execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats jpegxl --out ${OUTPUT_DIR}`, {
+      encoding: 'utf-8',
+    })
+    const jxl = path.join(OUTPUT_DIR, 'test.jxl')
+    expect(fs.existsSync(jxl)).toBeTruthy()
+    expect(result).toContain('✅ Created:')
   })
-
-  // Test: Simulate missing cjxl and confirm warning is shown
-  // Temporarily renames cjxl binary
-  // In image-processor/tests/image_converter_cli.spec.ts
-
-  test('shows warning if cjxl is missing', async () => {
-    let cjxlPath = '';
-    try {
-      // Find the path to the cjxl executable
-      cjxlPath = execSync('which cjxl').toString().trim();
-    } catch {
-      // If cjxl isn't installed, we can't run this test, so we skip it.
-      test.skip(true, 'cjxl is not installed at all. Cannot simulate removal.');
-      return;
-    }
-
-    try {
-      // Temporarily rename the cjxl executable to simulate it being missing
-      fs.renameSync(cjxlPath, `${cjxlPath}.bak`);
-
-      // This command is expected to fail, so we wrap it in a try block
-      // and let the catch block handle the expected error.
-      execSync(`npx tsx ${CLI_PATH} ${IMAGE_PATH} --formats jpegxl --out ${OUTPUT_DIR}`, {
-        stdio: 'pipe' // Capture stdio streams
-      });
-
-    } catch (error: any) {
-      // The command *should* throw an error. Now, we check if the stderr
-      // from that error contains the warning message we expect.
-      expect(error.stderr.toString()).toMatch(/cjxl is not installed/);
-
-    } finally {
-      // IMPORTANT: This block ensures that we rename the executable back
-      // to its original name, even if the test fails, preventing side effects.
-      if (fs.existsSync(`${cjxlPath}.bak`)) {
-        fs.renameSync(`${cjxlPath}.bak`, cjxlPath);
-      }
-    }
-  });
 })
 
 test.describe('Resizing', () => {

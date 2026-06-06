@@ -1,6 +1,6 @@
 {
   "name": "@elrond25/image-processor",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "start": "node --import tsx src/index.ts",
@@ -15,14 +15,14 @@
     "image",
     "processor",
     "sharp",
-    "cjxl",
+    "jpegxl",
     "converter",
     "cli",
     "typescript"
   ],
   "author": "Carlos Araya <carlos.araya@gmail.com> (https://publishing-project.rivendellweb.net/)",
   "license": "MIT",
-  "description": "Convert images to different formats using sharp and cjxl",
+  "description": "Convert images to different formats using sharp and WASM JPEG XL encoding",
   "bin": {
     "imageproc": "dist/index.js",
     "image-processor": "dist/index.js"
@@ -33,6 +33,7 @@
     "brace-expansion": "4.0.1"
   },
   "dependencies": {
+    "@jsquash/jxl": "^1.3.0",
     "commander": "^14.0.0",
     "sharp": "^0.34.1"
   },
@@ -47,7 +48,7 @@
     "globals": "^16.0.0",
     "jsdoc": "^4.0.5",
     "jsdoc-mermaid": "^1.0.0",
-    "tsx": "^4.19.3",
+    "tsx": "^4.22.3",
     "typescript": "^5.8.3"
   },
   "repository": {
